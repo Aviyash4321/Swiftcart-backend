@@ -37,7 +37,7 @@ const app = express();
 app.use(helmet());
 app.use(cors({
     origin: [
-        "https://swiftcart-fromtend.vercel.app",
+        "https://swiftcart-frontend.vercel.app",
         "http://localhost:5173"
     ],
     credentials: true
