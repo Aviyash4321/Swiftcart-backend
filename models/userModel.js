@@ -35,6 +35,16 @@ const userSchema = new mongoose.Schema(
       },
       default: 'user',
     },
+    // Profile picture (stored on Cloudinary). Existing users simply have no picture yet.
+    profileImage: {
+      type: String,
+      default: '',
+    },
+    profileImagePublicId: {
+      type: String,
+      default: '',
+      select: false, // internal value, only loaded when an image has to be replaced or deleted
+    },
   },
   {
     timestamps: true, // adds createdAt and updatedAt automatically
@@ -58,6 +68,7 @@ userSchema.methods.comparePassword = async function (plainPassword) {
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
     delete ret.password;
+    delete ret.profileImagePublicId;
     delete ret.__v;
     return ret;
   },

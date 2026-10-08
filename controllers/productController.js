@@ -1,5 +1,6 @@
 const Product = require('../models/productModel');
 const Review = require('../models/reviewModel');
+const { uploadImage, deleteImage, productImageOptions } = require('../config/cloudinary');
 
 // Fields a client is allowed to send when creating or updating a product
 const allowedFields = ['name', 'description', 'price', 'category', 'brand', 'images', 'stock'];
@@ -142,7 +143,21 @@ const createProduct = async (req, res, next) => {
     const data = pickAllowedFields(req.body);
     data.createdBy = req.user._id;
 
-    const product = await Product.create(data);
+    // Optional image (multipart form field "image"). It becomes the main image.
+    let uploaded = null;
+    if (req.file) {
+      uploaded = await uploadImage(req.file.buffer, productImageOptions);
+      data.images = [uploaded.url];
+      data.imagePublicId = uploaded.publicId;
+    }
+
+    let product;
+    try {
+      product = await Product.create(data);
+    } catch (error) {
+      if (uploaded) await deleteImage(uploaded.publicId); // do not leave an unused file behind
+      throw error;
+    }
 
     res.status(201).json({
       success: true,
@@ -166,7 +181,25 @@ const updateProduct = async (req, res, next) => {
 
     // Apply the changes, then save() so Mongoose validation runs again
     Object.assign(product, pickAllowedFields(req.body));
-    await product.save();
+
+    // A new image replaces the old main image (and the old file is deleted afterwards)
+    const oldPublicId = product.imagePublicId;
+    let uploaded = null;
+
+    if (req.file) {
+      uploaded = await uploadImage(req.file.buffer, productImageOptions);
+      product.images = [uploaded.url];
+      product.imagePublicId = uploaded.publicId;
+    }
+
+    try {
+      await product.save();
+    } catch (error) {
+      if (uploaded) await deleteImage(uploaded.publicId);
+      throw error;
+    }
+
+    if (uploaded) await deleteImage(oldPublicId);
 
     res.status(200).json({
       success: true,
@@ -189,6 +222,7 @@ const deleteProduct = async (req, res, next) => {
 
     await product.deleteOne();
     await Review.deleteMany({ product: product._id }); // remove the product's reviews too
+    await deleteImage(product.imagePublicId); // and its image file
 
     res.status(200).json({
       success: true,

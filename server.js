@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const connectDB = require('./config/db.mongo');
+const { isCloudinaryConfigured } = require('./config/cloudinary');
 const { apiLimiter } = require('./middlewares/rateLimiter');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
 
@@ -23,6 +24,11 @@ const missingVariables = requiredEnvVariables.filter((name) => !process.env[name
 if (missingVariables.length > 0) {
   console.error(`Missing required environment variables: ${missingVariables.join(', ')}`);
   process.exit(1);
+}
+
+// Image uploads need Cloudinary. The rest of the API works without it, so only warn.
+if (!isCloudinaryConfigured()) {
+  console.warn('Cloudinary is not configured: image uploads will return 503 until CLOUDINARY_* variables are set');
 }
 
 const app = express();

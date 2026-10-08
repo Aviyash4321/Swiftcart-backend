@@ -1,6 +1,7 @@
 const User = require('../models/userModel');
 const Cart = require('../models/cartModel');
 const Review = require('../models/reviewModel');
+const { deleteImage } = require('../config/cloudinary');
 
 const createError = (message, statusCode) => {
   const error = new Error(message);
@@ -94,7 +95,7 @@ const updateUser = async (req, res, next) => {
 // DELETE /api/users/:id  (admin)
 const deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select('+profileImagePublicId');
 
     if (!user) {
       return next(createError('User not found', 404));
@@ -116,6 +117,7 @@ const deleteUser = async (req, res, next) => {
 
     await Cart.deleteOne({ user: user._id });
     await user.deleteOne();
+    await deleteImage(user.profileImagePublicId);
 
     res.status(200).json({
       success: true,

@@ -39,8 +39,14 @@ const productSchema = new mongoose.Schema(
       default: '',
     },
     images: {
-      type: [String], // image URLs
+      type: [String], // image URLs (the first one is the main image)
       default: [],
+    },
+    // Cloudinary id of the uploaded main image, used to delete the old file when it is replaced.
+    // Empty for products whose images were entered as plain URLs.
+    imagePublicId: {
+      type: String,
+      default: '',
     },
     stock: {
       type: Number,

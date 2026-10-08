@@ -42,6 +42,12 @@ const errorHandler = (err, req, res, next) => {
     message = 'Token has expired, please log in again';
   }
 
+  // Request body too large
+  if (err.type === 'entity.too.large') {
+    statusCode = 413;
+    message = 'Request is too large';
+  }
+
   // Malformed JSON in the request body
   if (err.type === 'entity.parse.failed') {
     statusCode = 400;

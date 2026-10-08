@@ -1,5 +1,6 @@
 const User = require('../models/userModel');
 const { generateToken } = require('../utils/jwt');
+const { uploadImage, deleteImage, profileImageOptions } = require('../config/cloudinary');
 
 // POST /api/auth/register
 const register = async (req, res, next) => {
@@ -70,4 +71,69 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe };
+// PUT /api/auth/change-password
+// Body: { currentPassword, newPassword, confirmPassword }
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // password has select:false, so it must be requested explicitly
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user || !(await user.comparePassword(currentPassword))) {
+      // 400 (not 401) on purpose: a wrong current password must not look like an expired login
+      const error = new Error('Current password is incorrect');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    user.password = newPassword; // hashed by the pre-save hook in userModel.js
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password changed successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/auth/profile-image
+// Multipart form with one file in the "image" field
+const updateProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      const error = new Error('Choose an image to upload (form field name: image)');
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    const user = await User.findById(req.user._id).select('+profileImagePublicId');
+    const oldPublicId = user.profileImagePublicId;
+
+    const uploaded = await uploadImage(req.file.buffer, profileImageOptions);
+
+    user.profileImage = uploaded.url;
+    user.profileImagePublicId = uploaded.publicId;
+
+    try {
+      await user.save();
+    } catch (error) {
+      await deleteImage(uploaded.publicId); // do not leave an unused file behind
+      throw error;
+    }
+
+    await deleteImage(oldPublicId); // remove the previous picture
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile picture updated successfully',
+      data: user, // toJSON removes the password and the internal image id
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, changePassword, updateProfileImage };

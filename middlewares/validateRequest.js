@@ -60,6 +60,34 @@ const validateLogin = (req, res, next) => {
   next();
 };
 
+// PUT /api/auth/change-password  { currentPassword, newPassword, confirmPassword }
+const validateChangePassword = (req, res, next) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  if (!currentPassword || typeof currentPassword !== 'string') {
+    return sendValidationError(next, 'Current password is required');
+  }
+
+  // Same password rules as registration
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    return sendValidationError(next, 'New password is required and must be at least 6 characters');
+  }
+
+  if (!/[A-Za-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    return sendValidationError(next, 'New password must contain at least one letter and one number');
+  }
+
+  if (newPassword !== confirmPassword) {
+    return sendValidationError(next, 'New password and confirmation do not match');
+  }
+
+  if (newPassword === currentPassword) {
+    return sendValidationError(next, 'New password must be different from the current password');
+  }
+
+  next();
+};
+
 // ---------- ObjectId validator ----------
 
 // Usage: router.get('/:id', validateObjectId('id'), handler)
@@ -179,10 +207,11 @@ const validateCreateProduct = (req, res, next) => {
 // PUT /api/products/:id: all fields optional, but at least one must be sent
 const validateUpdateProduct = (req, res, next) => {
   const updatableFields = ['name', 'description', 'price', 'category', 'brand', 'images', 'stock'];
-  const hasAtLeastOneField = updatableFields.some((field) => req.body[field] !== undefined);
+  // Sending only a new image (req.file) is a valid update too
+  const hasAtLeastOneField = Boolean(req.file) || updatableFields.some((field) => req.body[field] !== undefined);
 
   if (!hasAtLeastOneField) {
-    return sendValidationError(next, `Send at least one field to update: ${updatableFields.join(', ')}`);
+    return sendValidationError(next, `Send at least one field or an image to update: ${updatableFields.join(', ')}`);
   }
 
   const message = checkProductFields(req.body);
@@ -347,6 +376,7 @@ const validateUpdateReview = (req, res, next) => {
 module.exports = {
   validateRegister,
   validateLogin,
+  validateChangePassword,
   validateObjectId,
   validateUpdateUser,
   validateCreateProduct,
