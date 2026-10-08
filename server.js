@@ -22,22 +22,24 @@ const requiredEnvVariables = ['MONGO_URI', 'JWT_SECRET'];
 const missingVariables = requiredEnvVariables.filter((name) => !process.env[name]);
 
 if (missingVariables.length > 0) {
-  console.error(`Missing required environment variables: ${missingVariables.join(', ')}`);
-  process.exit(1);
+    console.error(`Missing required environment variables: ${missingVariables.join(', ')}`);
+    process.exit(1);
 }
 
 // Image uploads need Cloudinary. The rest of the API works without it, so only warn.
 if (!isCloudinaryConfigured()) {
-  console.warn('Cloudinary is not configured: image uploads will return 503 until CLOUDINARY_* variables are set');
+    console.warn('Cloudinary is not configured: image uploads will return 503 until CLOUDINARY_* variables are set');
 }
 
 const app = express();
 
 // Security and logging middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+    origin: "https://swiftcart-fromtend.vercel.app/" // Your exact Vercel URL
+}));
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+    app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 }
 
 // Body parsers
@@ -61,17 +63,17 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  try {
-    await connectDB();
+const startServer = async() => {
+    try {
+        await connectDB();
 
-    app.listen(PORT, () => {
-      console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error(`Failed to start server: ${error.message}`);
-    process.exit(1); // do not run without a database
-  }
+        app.listen(PORT, () => {
+            console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error(`Failed to start server: ${error.message}`);
+        process.exit(1); // do not run without a database
+    }
 };
 
 startServer();
