@@ -36,7 +36,11 @@ const app = express();
 // Security and logging middleware
 app.use(helmet());
 app.use(cors({
-    origin: "https://swiftcart-fromtend.vercel.app/" // Your exact Vercel URL
+    origin: [
+        "https://swiftcart-fromtend.vercel.app",
+        "http://localhost:5173"
+    ],
+    credentials: true
 }));
 if (process.env.NODE_ENV !== 'test') {
     app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
